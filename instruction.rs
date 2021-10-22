@@ -328,7 +328,7 @@ pub enum LendingInstruction {
         call_back_data: Vec<u8>
     },
     // 14
-    /// 设置当前项目的各种参数
+    ///  Configuration parameter
     ///
     SetConfig {
         config_type:ConfigType,
