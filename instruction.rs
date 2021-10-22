@@ -305,7 +305,7 @@ pub enum LendingInstruction {
     ///   8. `[]` Flash loan receiver program id.
     ///             Must implement an instruction that has tag of 0 and a signature of `(amount: u64)`
     ///             This instruction must return the amount to the source liquidity account.
-    ///   9. `[singer]` Flash loan authority
+    ///   9. `[signer]` Flash loan authority
     ///   .. `[any]` Additional accounts expected by the receiving program's `ReceiveFlashLoan` instruction.
     ///
     ///   The flash loan receiver program that is to be invoked should contain an instruction with
@@ -325,6 +325,7 @@ pub enum LendingInstruction {
     FlashLoan {
         /// The amount that is to be borrowed - u64::MAX for up to 100% of available liquidity
         amount: u64,
+        call_back_data: Vec<u8>
     },
     // 14
     /// 设置当前项目的各种参数
@@ -367,16 +368,16 @@ pub enum LendingInstruction {
     },
 
     // 20
-     /// 0. `[writable]` Mining account
-     /// 1. `[]` Mine supply
-     /// 2. `[]` Destination account
-     /// 3. `[Signer]` Mining owner
-     /// 4. `[]` Lending market info
-     /// 5. `[]` Lending market authority
-     /// 6. `[]` Clock system var
-     /// 7. `[]` Token program id
-     /// 8. `[]`
-     ///     ... Reserves
+    /// 0. `[writable]` Mining account
+    /// 1. `[]` Mine supply
+    /// 2. `[]` Destination account
+    /// 3. `[Signer]` Mining owner
+    /// 4. `[]` Lending market info
+    /// 5. `[]` Lending market authority
+    /// 6. `[]` Clock system var
+    /// 7. `[]` Token program id
+    /// 8. `[]`
+    ///     ... Reserves
     ClaimMiningMine,
 
 
@@ -395,12 +396,13 @@ pub enum LendingInstruction {
     ///     ... Borrow reserves
     ClaimObligationMine,
 
-
     // 22
-    /// 0.
-    ///
-    ///
+    /// 0. `[]` Source account (liquidity supply account)
+    /// 1. `[]` Destination account receive owner fee
+    /// 2. `[]` Lending market account
+    /// 3. `[singer]` Lending market owner
     ClaimOwnerFee,
+
     // 23
     /// 0. `[Write]` Lending Market
     /// 1. `[Signer]` Pending owner
@@ -458,6 +460,7 @@ impl LendingInstruction {
                             reserve_owner_fee_wad,
                             flash_loan_fee_wad,
                             host_fee_percentage,
+                            host_fee_receivers:vec![],
                         },
                         deposit_paused:false,
                         borrow_paused:false,
@@ -501,8 +504,10 @@ impl LendingInstruction {
                 Self::LiquidateObligation { liquidity_amount }
             }
             13 => {
-                let (amount, _rest) = unpack_u64(rest)?;
-                Self::FlashLoan { amount }
+                let (amount, rest) = unpack_u64(rest)?;
+                let mut call_back_data =  Vec::with_capacity(rest.len());
+                call_back_data.extend_from_slice(rest);
+                Self::FlashLoan { amount ,call_back_data}
             }
             14 => {
                 let config_type = ConfigType::unpack(rest)?;
