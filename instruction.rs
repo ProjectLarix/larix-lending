@@ -328,7 +328,7 @@ pub enum LendingInstruction {
         call_back_data: Vec<u8>
     },
     // 14
-    ///  Configuration parameter
+    /// 设置当前项目的各种参数
     ///
     SetConfig {
         config_type:ConfigType,
@@ -368,16 +368,16 @@ pub enum LendingInstruction {
     },
 
     // 20
-    /// 0. `[writable]` Mining account
-    /// 1. `[]` Mine supply
-    /// 2. `[]` Destination account
-    /// 3. `[Signer]` Mining owner
-    /// 4. `[]` Lending market info
-    /// 5. `[]` Lending market authority
-    /// 6. `[]` Clock system var
-    /// 7. `[]` Token program id
-    /// 8. `[]`
-    ///     ... Reserves
+     /// 0. `[writable]` Mining account
+     /// 1. `[]` Mine supply
+     /// 2. `[]` Destination account
+     /// 3. `[Signer]` Mining owner
+     /// 4. `[]` Lending market info
+     /// 5. `[]` Lending market authority
+     /// 6. `[]` Clock system var
+     /// 7. `[]` Token program id
+     /// 8. `[]`
+     ///     ... Reserves
     ClaimMiningMine,
 
 
