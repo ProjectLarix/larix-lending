@@ -2,21 +2,21 @@
 
 use crate::{
     error::LendingError,
-    state::{ReserveConfig, ReserveFees},
-    unpack_util::{
-        unpack_u8,
-        unpack_u64,
-        unpack_bytes32,
-        unpack_pubkey
-    }
+    state::{ReserveConfig, ReserveFees}
 };
 use solana_program::{
     msg,
     program_error::ProgramError,
-    pubkey::{Pubkey},
+    pubkey::Pubkey,
 };
 use crate::config::ConfigType;
-use crate::unpack_util::unpack_bool;
+use crate::util::unpack_util::unpack_bool;
+use crate::util::unpack_util::{
+    unpack_bytes32,
+    unpack_pubkey,
+    unpack_u64,
+    unpack_u8
+};
 
 /// Instructions supported by the lending program.
 #[derive(Clone, Debug, PartialEq)]
@@ -64,10 +64,15 @@ pub enum LendingInstruction {
     ///   2. `[]` Reserve liquidity supply SPL Token account.
     ///   3. `[]` Reserve liquidity fee receiver.
     ///
-    ///   4. `[]` Pyth product account.
-    ///   5. `[]` Pyth price account.
-    ///             This will be used as the reserve liquidity oracle account.
-    ///   6  '[]' Larix oracle id
+    ///   4. `[]` Pyth product account  when is_lp is false
+    ///           Any account when is_lp is true
+    ///
+    ///   5. `[]` Reserve liquidity pyth oracle account when is_lp is false
+    ///           BridgePool account of bridge program when is_lp is true
+
+    ///   6. `[]` Reserve liquidity larix oracle account when is_lp is false
+    ///           LpPrice account of bridge program when is_lp is true
+
     ///   7. `[]` Reserve collateral SPL Token mint.
     ///
     ///   8. `[]` Reserve collateral token supply.
@@ -87,6 +92,7 @@ pub enum LendingInstruction {
         total_mining_speed: u64,
         kink_util_rate: u64,
         use_pyth_oracle:bool,
+        is_lp:bool,
     },
 
     // 3
@@ -98,8 +104,7 @@ pub enum LendingInstruction {
     ///
     ///   1. `[]` Reserve liquidity oracle account.
     ///             Must be the Pyth price account specified at InitReserve.
-    ///   2. `[]` Reserve liquidity larix oracle account.
-    ///   3. `[]` Clock sysvar.
+    ///   2. `[]`  Larix oracle
     RefreshReserve,
 
     // 4
@@ -117,8 +122,7 @@ pub enum LendingInstruction {
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
     ///   7. `[signer]` User transfer authority ($authority).
-    ///   8. `[]` Clock sysvar.
-    ///   9. `[]` Token program id.
+    ///   8. `[]` Token program id.
     DepositReserveLiquidity {
         /// Amount of liquidity to deposit in exchange for collateral tokens
         liquidity_amount: u64,
@@ -131,15 +135,19 @@ pub enum LendingInstruction {
     ///
     ///   0. `[writable]` Source collateral token account.
     ///                     $authority can transfer $collateral_amount.
-    ///   1. `[writable]` Destination liquidity token account.
-    ///   2. `[writable]` Reserve account.
-    ///   3. `[writable]` Reserve collateral SPL Token mint.
-    ///   4. `[writable]` Reserve liquidity supply SPL Token account.
-    ///   5. `[]` Lending market account.
-    ///   6. `[]` Derived lending market authority.
-    ///   7. `[signer]` User transfer authority ($authority).
-    ///   8. `[]` Clock sysvar.
-    ///   9. `[]` Token program id.
+    ///   1. `[writable]` Reserve account.
+    ///   2. `[writable]` Reserve collateral SPL Token mint.
+    ///   3. `[writable]` Reserve liquidity supply SPL Token account.
+    ///   4. `[]` Lending market account.
+    ///   5. `[]` Derived lending market authority.
+    ///   6. `[signer]` User transfer authority ($authority).
+    ///   7. `[]` Token program id.
+    ///
+    ///   8. `[writable]` Destination liquidity token account.
+    ///      or
+    ///   8. `[writable]` Bridge pool info
+    ///   9. `[]` Bridge program id
+    ///   10.`[writable]` Bridge withdraw lp account
     RedeemReserveCollateral {
         /// Amount of collateral tokens to redeem in exchange for liquidity
         collateral_amount: u64,
@@ -153,9 +161,7 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Obligation account - uninitialized.
     ///   1. `[]` Lending market account.
     ///   2. `[signer]` Obligation owner.
-    ///   3. `[]` Clock sysvar.
-    ///   4. `[]` Rent sysvar.
-    ///   5. `[]` Token program id.
+    ///   3. `[]` Token program id.
     InitObligation,
 
     // 7
@@ -166,7 +172,6 @@ pub enum LendingInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Obligation account.
-    ///   1. `[]` Clock sysvar.
     ///   .. `[]` Collateral deposit reserve accounts - refreshed, all, in order.
     ///   .. `[]` Liquidity borrow reserve accounts - refreshed, all, in order.
     RefreshObligation,
@@ -186,8 +191,7 @@ pub enum LendingInstruction {
     ///   5. `[]` Derived lending market authority.
     ///   6. `[signer]` Obligation owner.
     ///   7. `[signer]` User transfer authority ($authority).
-    ///   8. `[]` Clock sysvar.
-    ///   9. `[]` Token program id.
+    ///   8. `[]` Token program id.
     DepositObligationCollateral {
         /// Amount of collateral tokens to deposit
         collateral_amount: u64,
@@ -206,8 +210,7 @@ pub enum LendingInstruction {
     ///   4. `[]` Lending market account.
     ///   5. `[]` Derived lending market authority.
     ///   6. `[signer]` Obligation owner.
-    ///   7. `[]` Clock sysvar.
-    ///   8. `[]` Token program id.
+    ///   7. `[]` Token program id.
     WithdrawObligationCollateral {
         /// Amount of collateral tokens to withdraw - u64::MAX for up to 100% of deposited amount
         collateral_amount: u64,
@@ -217,22 +220,25 @@ pub enum LendingInstruction {
     // 10
     /// Borrow liquidity from a reserve by depositing collateral tokens. Requires a refreshed
     /// obligation and reserve.
-    ///
+    /// ::Useless
+    ///     The current account will not be used.
+    ///    It is used to make up the account number,
+    ///    in order to keep the size of the current instruction is equals to liquidate obligation instruction,
+    ///    to avoid the situation that the current transaction is successful but the liquidate cannot be performed
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source borrow reserve liquidity supply SPL Token account.
     ///   1. `[writable]` Destination liquidity token account.
     ///                     Minted by borrow reserve liquidity mint.
     ///   2. `[writable]` Borrow reserve account - refreshed.
-    ///   3. `[writable]` Borrow reserve liquidity fee receiver account.
-    ///                     Must be the fee account specified at InitReserve.
-    ///   4. `[writable]` Obligation account - refreshed.
-    ///   5. `[]` Lending market account.
-    ///   6. `[]` Derived lending market authority.
-    ///   7. `[signer]` Obligation owner.
-    ///   8. `[]` Clock sysvar.
-    ///   9. `[]` Token program id.
-    ///   10 `[optional, writable]` Host fee receiver account.
+    ///   3. `[writable]` Obligation account - refreshed.
+    ///   4. `[]` Lending market account.
+    ///   5. `[]` Derived lending market authority.
+    ///   6. `[signer]` Obligation owner.
+    ///   7. `[]` Token program id.
+    ///   8. `[]` Borrow fee receiver
+    ///   9. `[]` Larix oracle program account- Useless
+    ///   10. `[]` Mine mint account - Useless
     BorrowObligationLiquidity {
         /// Amount of liquidity to borrow - u64::MAX for 100% of borrowing power
         liquidity_amount: u64,
@@ -252,8 +258,7 @@ pub enum LendingInstruction {
     ///   3. `[writable]` Obligation account - refreshed.
     ///   4. `[]` Lending market account.
     ///   5. `[signer]` User transfer authority ($authority).
-    ///   6. `[]` Clock sysvar.
-    ///   7. `[]` Token program id.
+    ///   6. `[]` Token program id.
     RepayObligationLiquidity {
         /// Amount of liquidity to repay - u64::MAX for 100% of borrowed amount
         liquidity_amount: u64,
@@ -338,23 +343,21 @@ pub enum LendingInstruction {
     /// 1. `[signer]` Mining owner
     /// 2. `[]` Lending market account
     ///
-    /// 3. `[]` Rent system var
     InitMining,
 
-    // 18
+    // 17
     /// 0. `[Writable]` Source account
     /// 1. `[Writable]` UnColl deposit supply SPL Token account.
     /// 2. `[Writable]` Mining account
     /// 3. `[]` Bonus account
     /// 4. `[]` Lending market account.
-    /// 5. `[]` Derived lending market authority.
-    /// 6. `[]` Mining owner.
-    /// 7. `[signer]`   User transfer authority ($authority).
-    /// 8. `[]` Token program id.
+    /// 5. `[]` Mining owner.
+    /// 6. `[signer]`   User transfer authority ($authority).
+    /// 7. `[]` Token program id.
     DepositMining{
         amount:u64
     },
-    // 19
+    // 18
     /// 0. `[writable]` Source account
     /// 1. `[writable]` UnColl deposit supply SPL Token account.
     /// 2. `[writable]` Mining account
@@ -374,9 +377,8 @@ pub enum LendingInstruction {
      /// 3. `[Signer]` Mining owner
      /// 4. `[]` Lending market info
      /// 5. `[]` Lending market authority
-     /// 6. `[]` Clock system var
-     /// 7. `[]` Token program id
-     /// 8. `[]`
+     /// 6. `[]` Token program id
+     /// 7. `[]`
      ///     ... Reserves
     ClaimMiningMine,
 
@@ -388,11 +390,10 @@ pub enum LendingInstruction {
     /// 3. `[Signer]` Mining owner
     /// 4. `[]` Lending market info
     /// 5. `[]` Lending market authority
-    /// 6. `[]` Clock system var
-    /// 7. `[]` Token program id
-    /// 8. `[]`
+    /// 6. `[]` Token program id
+    /// 7. `[]`
     ///     ... Deposit reserves
-    /// 9. `[]`
+    /// 8. `[]`
     ///     ... Borrow reserves
     ClaimObligationMine,
 
@@ -407,7 +408,40 @@ pub enum LendingInstruction {
     /// 0. `[Write]` Lending Market
     /// 1. `[Signer]` Pending owner
     ///
-    ReceivePendingOwner
+    ReceivePendingOwner,
+    // 24
+    ///
+    ///   0. `[writable]` Reserve account.
+    ///
+    ///   1. `[]` Oracle account larix oracle or pyth price account .
+    ///
+    ///
+    RefreshReserves,
+
+    // 25
+    /// Repay borrowed liquidity to a reserve to receive collateral at a discount from an unhealthy
+    /// obligation. Requires a refreshed obligation and reserves.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Source liquidity token account.
+    ///                     Minted by repay reserve liquidity mint.
+    ///                     $authority can transfer $liquidity_amount.
+    ///   1. `[writable]` Destination collateral token account.
+    ///                     Minted by withdraw reserve collateral mint.
+    ///   2. `[writable]` Repay reserve account - refreshed.
+    ///   3. `[writable]` Repay reserve liquidity supply SPL Token account.
+    ///   4. `[]` Withdraw reserve account - refreshed.
+    ///   5. `[writable]` Withdraw reserve collateral supply SPL Token account.
+    ///   6. `[writable]` Obligation account - refreshed.
+    ///   7. `[]` Lending market account.
+    ///   8. `[]` Derived lending market authority.
+    ///   9. `[signer]` User transfer authority ($authority).
+    ///   10 `[]` Token program id.
+    LiquidateObligation2 {
+        /// Amount of liquidity to repay - u64::MAX for up to 100% of borrowed amount
+        liquidity_amount: u64,
+    },
 }
 
 impl LendingInstruction {
@@ -445,7 +479,8 @@ impl LendingInstruction {
                 let (host_fee_percentage, rest) = unpack_u8(rest)?;
                 let (total_mining_speed,rest) = unpack_u64(rest)?;
                 let (kink_util_rate,rest) = unpack_u64(rest)?;
-                let (use_pyth_oracle,_rest) = unpack_bool(rest)?;
+                let (use_pyth_oracle,rest) = unpack_bool(rest)?;
+                let (is_lp,_rest) = unpack_bool(rest)?;
                 Self::InitReserve {
                     config: ReserveConfig {
                         optimal_utilization_rate,
@@ -463,13 +498,15 @@ impl LendingInstruction {
                             host_fee_receivers:vec![],
                         },
                         deposit_paused:false,
-                        borrow_paused:false,
+                        borrow_paused:is_lp,
                         liquidation_paused:false,
+                        deposit_limit:0u64
 
                     },
                     total_mining_speed,
                     kink_util_rate,
-                    use_pyth_oracle
+                    use_pyth_oracle,
+                    is_lp
                 }
             }
             3 => Self::RefreshReserve,
@@ -536,6 +573,13 @@ impl LendingInstruction {
             }
             23 => {
                 Self::ReceivePendingOwner
+            }
+            24 => {
+                Self::RefreshReserves
+            }
+            25 => {
+                let (liquidity_amount, _rest) = unpack_u64(rest)?;
+                Self::LiquidateObligation2 {liquidity_amount}
             }
             _ => {
                 msg!("Instruction cannot be unpacked");
