@@ -9,7 +9,6 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use crate::config::ConfigType;
 use crate::util::unpack_util::unpack_bool;
 use crate::util::unpack_util::{
     unpack_bytes32,
@@ -333,11 +332,9 @@ pub enum LendingInstruction {
         call_back_data: Vec<u8>
     },
     // 14
-    /// 设置当前项目的各种参数
     ///
-    SetConfig {
-        config_type:ConfigType,
-    },
+    ///
+    SetConfig ,
     // 16
     /// 0. `[]` Mining account
     /// 1. `[signer]` Mining owner
@@ -547,8 +544,7 @@ impl LendingInstruction {
                 Self::FlashLoan { amount ,call_back_data}
             }
             14 => {
-                let config_type = ConfigType::unpack(rest)?;
-                Self::SetConfig { config_type }
+                Self::SetConfig
             }
             16 => {
                 Self::InitMining
