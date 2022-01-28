@@ -1,7 +1,7 @@
 use solana_program::pubkey::Pubkey;
 
 /// Reserve configuration values
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Copy)]
 pub struct ReserveConfig {
     /// Optimal utilization rate, as a percentage
     pub optimal_utilization_rate: u8,
