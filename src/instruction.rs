@@ -2,7 +2,6 @@
 
 use crate::{
     error::LendingError,
-    state::{ReserveConfig, ReserveFees}
 };
 use solana_program::{
     msg,
@@ -87,7 +86,6 @@ pub enum LendingInstruction {
 
     InitReserve {
         /// Reserve configuration values
-        config: ReserveConfig,
         total_mining_speed: u64,
         kink_util_rate: u64,
         use_pyth_oracle:bool,
@@ -463,43 +461,22 @@ impl LendingInstruction {
                 Self::SetLendingMarketOwner { new_owner }
             }
             2 => {
-                let (optimal_utilization_rate, rest) = unpack_u8(rest)?;
-                let (loan_to_value_ratio, rest) = unpack_u8(rest)?;
-                let (liquidation_bonus, rest) = unpack_u8(rest)?;
-                let (liquidation_threshold, rest) = unpack_u8(rest)?;
-                let (min_borrow_rate, rest) = unpack_u8(rest)?;
-                let (optimal_borrow_rate, rest) = unpack_u8(rest)?;
-                let (max_borrow_rate, rest) = unpack_u8(rest)?;
-                let (borrow_fee_wad, rest) = unpack_u64(rest)?;
-                let (reserve_owner_fee_wad, rest) = unpack_u64(rest)?;
-                let (flash_loan_fee_wad, rest) = unpack_u64(rest)?;
-                let (host_fee_percentage, rest) = unpack_u8(rest)?;
+                let (_optimal_utilization_rate, rest) = unpack_u8(rest)?;
+                let (_loan_to_value_ratio, rest) = unpack_u8(rest)?;
+                let (_liquidation_bonus, rest) = unpack_u8(rest)?;
+                let (_liquidation_threshold, rest) = unpack_u8(rest)?;
+                let (_min_borrow_rate, rest) = unpack_u8(rest)?;
+                let (_optimal_borrow_rate, rest) = unpack_u8(rest)?;
+                let (_max_borrow_ratse, rest) = unpack_u8(rest)?;
+                let (_borrow_fee_wad, rest) = unpack_u64(rest)?;
+                let (_reserve_owner_fee_wad, rest) = unpack_u64(rest)?;
+                let (_flash_loan_fee_wad, rest) = unpack_u64(rest)?;
+                let (_host_fee_percentage, rest) = unpack_u8(rest)?;
                 let (total_mining_speed,rest) = unpack_u64(rest)?;
                 let (kink_util_rate,rest) = unpack_u64(rest)?;
                 let (use_pyth_oracle,rest) = unpack_bool(rest)?;
                 let (is_lp,_rest) = unpack_bool(rest)?;
                 Self::InitReserve {
-                    config: ReserveConfig {
-                        optimal_utilization_rate,
-                        loan_to_value_ratio,
-                        liquidation_bonus,
-                        liquidation_threshold,
-                        min_borrow_rate,
-                        optimal_borrow_rate,
-                        max_borrow_rate,
-                        fees: ReserveFees {
-                            borrow_fee_wad,
-                            reserve_owner_fee_wad,
-                            flash_loan_fee_wad,
-                            host_fee_percentage,
-                            host_fee_receivers:vec![],
-                        },
-                        deposit_paused:false,
-                        borrow_paused:is_lp,
-                        liquidation_paused:false,
-                        deposit_limit:0u64
-
-                    },
                     total_mining_speed,
                     kink_util_rate,
                     use_pyth_oracle,
