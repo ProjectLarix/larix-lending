@@ -8,7 +8,7 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use crate::util::unpack_util::unpack_bool;
+use crate::util::unpack_util::{unpack_bool, unpack_u16};
 use crate::util::unpack_util::{
     unpack_bytes32,
     unpack_pubkey,
@@ -341,6 +341,12 @@ pub enum LendingInstruction {
     InitMining,
 
     // 17
+    ///
+    /// 0.  `[]` Mining account
+    /// 1.. `[]` Reserves in mining
+
+    RefreshMining,
+    // 18
     /// 0. `[Writable]` Source account
     /// 1. `[Writable]` UnColl deposit supply SPL Token account.
     /// 2. `[Writable]` Mining account
@@ -352,7 +358,7 @@ pub enum LendingInstruction {
     DepositMining{
         amount:u64
     },
-    // 18
+    // 19
     /// 0. `[writable]` Source account
     /// 1. `[writable]` UnColl deposit supply SPL Token account.
     /// 2. `[writable]` Mining account
@@ -437,6 +443,31 @@ pub enum LendingInstruction {
         /// Amount of liquidity to repay - u64::MAX for up to 100% of borrowed amount
         liquidity_amount: u64,
     },
+
+    // 26
+    ///
+    ///  0.  `[]` Token program
+    ///  1.  `[]` Lending market account
+    ///  2.  `[]` Lending market authority
+    ///  3.  `[Signer]` Owner
+    ///  4.  `[]` Mining account
+    ///  5.  `[]` Obligation account.
+    ///           After accounts pop if this account can not provided
+    ///  6.  `[]` Destination account
+    ///  7.  `[]` Source account
+    ///
+    ///  or
+    ///
+    ///  6.  `[]` Larix lock program
+    ///  7.  `[]` Larix lock pool
+    ///  8.  `[]` User larix info account
+    ///
+    ClaimMine{
+        // claim times of user expected got: 100 equals 100%
+        claim_times:u16,
+        // the ratio of claim user's all mine token 10000 equals 100%
+        claim_ratio:u16
+    }
 }
 
 impl LendingInstruction {
@@ -526,7 +557,9 @@ impl LendingInstruction {
             16 => {
                 Self::InitMining
             }
-
+            17 => {
+                Self::RefreshMining
+            }
             18 => {
                 let (amount, _rest) = unpack_u64(rest)?;
                 Self::DepositMining { amount }
@@ -553,6 +586,14 @@ impl LendingInstruction {
             25 => {
                 let (liquidity_amount, _rest) = unpack_u64(rest)?;
                 Self::LiquidateObligation2 {liquidity_amount}
+            }
+            26 => {
+                let (subsidy_times, rest) = unpack_u16(rest)?;
+                let (claim_ratio, _rest) = unpack_u16(rest)?;
+                Self::ClaimMine {
+                    claim_times: subsidy_times,
+                    claim_ratio
+                }
             }
             _ => {
                 msg!("Instruction cannot be unpacked");

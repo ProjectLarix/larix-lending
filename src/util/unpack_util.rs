@@ -46,7 +46,32 @@ pub fn unpack_u64(input: &[u8]) -> Result<(u64, &[u8]), ProgramError> {
         .ok_or(LendingError::InstructionUnpackError)?;
     Ok((value, rest))
 }
-
+pub fn unpack_u32(input: &[u8]) -> Result<(u32, &[u8]), ProgramError> {
+    if input.len() < 4 {
+        msg!("u64 cannot be unpacked");
+        return Err(LendingError::InstructionUnpackError.into());
+    }
+    let (bytes, rest) = input.split_at(4);
+    let value = bytes
+        .get(..4)
+        .and_then(|slice| slice.try_into().ok())
+        .map(u32::from_le_bytes)
+        .ok_or(LendingError::InstructionUnpackError)?;
+    Ok((value, rest))
+}
+pub fn unpack_u16(input: &[u8]) -> Result<(u16, &[u8]), ProgramError> {
+    if input.len() < 2 {
+        msg!("u64 cannot be unpacked");
+        return Err(LendingError::InstructionUnpackError.into());
+    }
+    let (bytes, rest) = input.split_at(2);
+    let value = bytes
+        .get(..2)
+        .and_then(|slice| slice.try_into().ok())
+        .map(u16::from_le_bytes)
+        .ok_or(LendingError::InstructionUnpackError)?;
+    Ok((value, rest))
+}
 pub fn unpack_u8(input: &[u8]) -> Result<(u8, &[u8]), ProgramError> {
     if input.is_empty() {
         msg!("u8 cannot be unpacked");
