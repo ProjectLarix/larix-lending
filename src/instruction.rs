@@ -1,5 +1,7 @@
 //! Instruction types
 
+
+use std::mem::size_of;
 use crate::{
     error::LendingError,
 };
@@ -8,6 +10,8 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
+use solana_program::instruction::{AccountMeta, Instruction};
+use solana_program::pubkey::PUBKEY_BYTES;
 use crate::util::unpack_util::{unpack_bool, unpack_u16};
 use crate::util::unpack_util::{
     unpack_bytes32,
@@ -199,11 +203,12 @@ pub enum LendingInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[writable]` Source withdraw reserve collateral supply SPL Token account.
-    ///   1. `[writable]` Destination collateral token account.
-    ///                     Minted by withdraw reserve collateral mint.
+    ///   0. `[writable]` Source collateral token account.
+    ///                     Minted by deposit reserve collateral mint.
+    ///                     $authority can transfer $collateral_amount.
+    ///   1. `[writable]` Destination deposit reserve collateral supply SPL Token account.
     ///   2. `[]` Withdraw reserve account - refreshed.
-    ///   3. `[writable]` Obligation account - refreshed.
+    ///   3. `[writable]` Obligation account.
     ///   4. `[]` Lending market account.
     ///   5. `[]` Derived lending market authority.
     ///   6. `[signer]` Obligation owner.
@@ -388,7 +393,7 @@ pub enum LendingInstruction {
     /// 0. `[writable]` Obligation account
     /// 1. `[]` Mine supply
     /// 2. `[]` Destination account
-    /// 3. `[Signer]` Mining owner
+    /// 3. `[Signer]` Obligation owner
     /// 4. `[]` Lending market info
     /// 5. `[]` Lending market authority
     /// 6. `[]` Token program id
@@ -413,9 +418,12 @@ pub enum LendingInstruction {
     // 24
     ///
     ///   0. `[writable]` Reserve account.
-    ///
     ///   1. `[]` Oracle account larix oracle or pyth price account .
     ///
+    ///   ...
+    ///
+    ///   `[writable]` Reserve account.
+    ///   `[]` Oracle account larix oracle or pyth price account
     ///
     RefreshReserves,
 
@@ -601,5 +609,342 @@ impl LendingInstruction {
             }
         })
     }
+
+    pub fn pack(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(size_of::<Self>());
+        match *self {
+            Self::RefreshReserves => {
+                buf.push(24)
+            }
+            Self::DepositReserveLiquidity { liquidity_amount } => {
+                buf.push(4);
+                buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+            }
+            Self::RedeemReserveCollateral { collateral_amount } => {
+                buf.push(5);
+                buf.extend_from_slice(&collateral_amount.to_le_bytes());
+            }
+            Self::InitObligation => {
+                buf.push(6);
+            }
+            Self::RefreshObligation => {
+                buf.push(7);
+            }
+            Self::DepositObligationCollateral { collateral_amount } => {
+                buf.push(8);
+                buf.extend_from_slice(&collateral_amount.to_le_bytes());
+            }
+            Self::WithdrawObligationCollateral { collateral_amount } => {
+                buf.push(9);
+                buf.extend_from_slice(&collateral_amount.to_le_bytes());
+            }
+            Self::BorrowObligationLiquidity { liquidity_amount } => {
+                buf.push(10);
+                buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+            }
+            Self::RepayObligationLiquidity { liquidity_amount } => {
+                buf.push(11);
+                buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+            }
+            Self::ClaimObligationMine => {
+                buf.push(21);
+            }
+            _ => {
+                // TODO: implementation
+            }
+        }
+        buf
+    }
+}
+pub fn refresh_reserves(
+    program_id:Pubkey,
+    reserves:Vec<Pubkey>,
+    oracles:Vec<Pubkey>
+) -> Instruction {
+    let mut accounts = Vec::with_capacity(reserves.len()*2);
+    for i in 0..reserves.len(){
+        accounts.push(AccountMeta::new(reserves[i],false));
+        accounts.push(AccountMeta::new_readonly(oracles[i],false));
+    }
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::RefreshReserves.pack(),
+    }
+}
+#[allow(clippy::too_many_arguments)]
+pub fn deposit_reserve_liquidity(
+    program_id: Pubkey,
+    liquidity_amount: u64,
+    source_liquidity_pubkey: Pubkey,
+    destination_collateral_pubkey: Pubkey,
+    reserve_pubkey: Pubkey,
+    reserve_collateral_mint_pubkey: Pubkey,
+    reserve_liquidity_supply_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(source_liquidity_pubkey, false),
+            AccountMeta::new(destination_collateral_pubkey, false),
+            AccountMeta::new(reserve_pubkey, false),
+            AccountMeta::new(reserve_collateral_mint_pubkey, false),
+            AccountMeta::new(reserve_liquidity_supply_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: LendingInstruction::DepositReserveLiquidity { liquidity_amount }.pack(),
+    }
+}
+/// Creates a 'RedeemReserveCollateral' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn redeem_reserve_collateral(
+    program_id: Pubkey,
+    collateral_amount: u64,
+    source_collateral_pubkey: Pubkey,
+    destination_liquidity_pubkey: Pubkey,
+    reserve_pubkey: Pubkey,
+    reserve_collateral_mint_pubkey: Pubkey,
+    reserve_liquidity_supply_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(source_collateral_pubkey, false),
+            AccountMeta::new(reserve_pubkey, false),
+            AccountMeta::new(reserve_collateral_mint_pubkey, false),
+            AccountMeta::new(reserve_liquidity_supply_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new(destination_liquidity_pubkey, false),
+        ],
+        data: LendingInstruction::RedeemReserveCollateral { collateral_amount }.pack(),
+    }
+}
+/// Creates an 'InitObligation' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn init_obligation(
+    program_id: Pubkey,
+    obligation_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    obligation_owner_pubkey: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(obligation_owner_pubkey, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: LendingInstruction::InitObligation.pack(),
+    }
 }
 
+/// Creates a 'RefreshObligation' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn refresh_obligation(
+    program_id: Pubkey,
+    obligation_pubkey: Pubkey,
+    reserve_pubkeys: Vec<Pubkey>,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(obligation_pubkey, false)
+    ];
+    accounts.extend(
+        reserve_pubkeys
+            .into_iter()
+            .map(|pubkey| AccountMeta::new_readonly(pubkey, false)),
+    );
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::RefreshObligation.pack(),
+    }
+}
+
+/// Creates a 'DepositObligationCollateral' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn deposit_obligation_collateral(
+    program_id: Pubkey,
+    collateral_amount: u64,
+    source_collateral_pubkey: Pubkey,
+    destination_collateral_pubkey: Pubkey,
+    deposit_reserve_pubkey: Pubkey,
+    obligation_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    obligation_owner_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(source_collateral_pubkey, false),
+            AccountMeta::new(destination_collateral_pubkey, false),
+            AccountMeta::new_readonly(deposit_reserve_pubkey, false),
+            AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(obligation_owner_pubkey, true),
+            AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: LendingInstruction::DepositObligationCollateral { collateral_amount }.pack(),
+    }
+}
+/// Creates a 'WithdrawObligationCollateral' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn withdraw_obligation_collateral(
+    program_id: Pubkey,
+    collateral_amount: u64,
+    source_collateral_pubkey: Pubkey,
+    destination_collateral_pubkey: Pubkey,
+    withdraw_reserve_pubkey: Pubkey,
+    obligation_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    obligation_owner_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(source_collateral_pubkey, false),
+            AccountMeta::new(destination_collateral_pubkey, false),
+            AccountMeta::new_readonly(withdraw_reserve_pubkey, false),
+            AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new_readonly(obligation_owner_pubkey, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: LendingInstruction::WithdrawObligationCollateral { collateral_amount }.pack(),
+    }
+}
+/// Creates a 'BorrowObligationLiquidity' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn borrow_obligation_liquidity(
+    program_id: Pubkey,
+    liquidity_amount: u64,
+    source_liquidity_pubkey: Pubkey,
+    destination_liquidity_pubkey: Pubkey,
+    borrow_reserve_pubkey: Pubkey,
+    borrow_reserve_liquidity_fee_receiver_pubkey: Pubkey,
+    obligation_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    obligation_owner_pubkey: Pubkey,
+    larix_oracle_program_pubkey:Pubkey,
+    mine_mint_pubkey:Pubkey
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    let accounts = vec![
+        AccountMeta::new(source_liquidity_pubkey, false),
+        AccountMeta::new(destination_liquidity_pubkey, false),
+        AccountMeta::new(borrow_reserve_pubkey, false),
+
+        AccountMeta::new(obligation_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+
+        AccountMeta::new_readonly(obligation_owner_pubkey, true),
+        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new(borrow_reserve_liquidity_fee_receiver_pubkey, false),
+        AccountMeta::new_readonly(larix_oracle_program_pubkey, false),
+        AccountMeta::new_readonly(mine_mint_pubkey, false),
+    ];
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::BorrowObligationLiquidity { liquidity_amount }.pack(),
+    }
+}
+/// Creates a `RepayObligationLiquidity` instruction
+#[allow(clippy::too_many_arguments)]
+pub fn repay_obligation_liquidity(
+    program_id: Pubkey,
+    liquidity_amount: u64,
+    source_liquidity_pubkey: Pubkey,
+    destination_liquidity_pubkey: Pubkey,
+    repay_reserve_pubkey: Pubkey,
+    obligation_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(source_liquidity_pubkey, false),
+            AccountMeta::new(destination_liquidity_pubkey, false),
+            AccountMeta::new(repay_reserve_pubkey, false),
+            AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: LendingInstruction::RepayObligationLiquidity { liquidity_amount }.pack(),
+    }
+}
+pub fn claim_obligation_mine(
+    program_id: Pubkey,
+    obligation_pubkey:Pubkey,
+    mine_supply_pubkey:Pubkey,
+    destination_account_pubkey:Pubkey,
+    obligation_owner:Pubkey,
+    lending_market_pubkey:Pubkey,
+    deposit_reserves:Vec<Pubkey>,
+    borrow_reserves:Vec<Pubkey>,
+) ->Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    let mut accounts = vec![
+        AccountMeta::new(obligation_pubkey, false),
+        AccountMeta::new(mine_supply_pubkey, false),
+        AccountMeta::new(destination_account_pubkey, false),
+        AccountMeta::new_readonly(obligation_owner, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
+    accounts.extend(
+        deposit_reserves
+            .into_iter()
+            .map(|pubkey| AccountMeta::new_readonly(pubkey, false)),
+    );
+    accounts.extend(
+        borrow_reserves
+            .into_iter()
+            .map(|pubkey| AccountMeta::new_readonly(pubkey, false)),
+    );
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::ClaimObligationMine.pack(),
+    }
+}
