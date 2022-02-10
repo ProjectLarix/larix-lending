@@ -406,6 +406,18 @@
       "lendingMarketID": "5geyZJdffDBNoMqEbogbPvdgH9ue7NREobtW8M3C1qfe",
       "lendingMarketAuthority": "BxnUi6jyYbtEEgkBq4bPLKzDpSfWVAzgyf3TF2jfC1my",
       "lendingMarketOwnerAccount": "HmzDqZExUUQo4hazRsvnEHvhQfzFqziDYuUAJfRas48J"
+    },
+    "EzfgjvkSwthhgHaceR3LnKXUoRkP6NUhfghdaHAj1tUv": {
+      "reserveId": "ErwYs9UCVik6oLKTZgM5TYLMYU2JTVARVawwJKxMEqbp",
+      "name": "weFTT",
+      "liquidityTokenID": "EzfgjvkSwthhgHaceR3LnKXUoRkP6NUhfghdaHAj1tUv",
+      "liquiditySupplyID": "FXJ1YYax7kxzUE6fyXYiUVkZBgr68DdgSorWSz8A2TAU",
+      "liquidityFeeReceiverID": "C1XkNCM9ck1yLjkrkn2QVTyoZPnCamLE66pMenNVbF8M",
+      "collateralTokenID": "8txpnwk6ruV5fjbGDS1Lx8aNaBP8RcWThXZsZRMGDrE4",
+      "collateralSupplyID": "3wRYZ5EvYn5RMB3qqJu33UR5wuKbjBgjM3HQZ1qz4Gu6",
+      "lendingMarketID": "5geyZJdffDBNoMqEbogbPvdgH9ue7NREobtW8M3C1qfe",
+      "lendingMarketAuthority": "BxnUi6jyYbtEEgkBq4bPLKzDpSfWVAzgyf3TF2jfC1my",
+      "lendingMarketOwnerAccount": "EEN7AjXNai5xCXoNzkEi7fN5QxEmEdyayirJwJr4vfth"
     }
   }
 }

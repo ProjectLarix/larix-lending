@@ -644,6 +644,29 @@
       "bridge_pool": {
       },
       "if_create": true
+    },
+    "EzfgjvkSwthhgHaceR3LnKXUoRkP6NUhfghdaHAj1tUv": {
+      "product_data": "E7ymZgACaSd1fYLf2V7WkAmFkpRiWfAjm49R7bceny9K",
+      "price": "8JPJJkmDScpcNmBRKGZuPuG2GYAveQgP3t5gFuMymwvF",
+      "larix_oracle_id": "14QSoduiLpjG74sN1CT5rLZPKafx5FaEgcFC2WRp2wK2",
+      "optimal_utilization_rate": 90,
+      "loan_to_value_ratio": 75,
+      "liquidation_bonus": 8,
+      "liquidation_threshold": 80,
+      "min_borrow_rate": 2,
+      "optimal_borrow_rate": 28,
+      "max_borrow_rate": 87,
+      "borrow_fee_wad": 0,
+      "borrow_interest_fee_wad": 200000000000000000,
+      "flash_loan_fee_wad":        3000000000000000,
+      "host_fee_percentage": 0,
+      "deposit_paused": false,
+      "borrow_paused": false,
+      "liquidation_paused": false,
+      "total_mining_speed": "100",
+      "kink_util_rate": 0,
+      "name" : "weFTT",
+      "if_create": true
     }
   }
 
