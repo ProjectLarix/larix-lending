@@ -119,7 +119,7 @@ pub struct ObligationLiquidity {
 
 const OBLIGATION_COLLATERAL_LEN: usize = 72; // 32 + 8 + 16 + 16
 const OBLIGATION_LIQUIDITY_LEN: usize = 96; // 32 + 16 + 16 + 16
-const OBLIGATION_LEN: usize = 1092;// 916; // 1 + 8 + 1 + 32 + 32 + 16 + 16 + 16 + 16 + 1 + 1 + (56 * 1) + (80 * 9)
+pub const OBLIGATION_LEN: usize = 1092;// 916; // 1 + 8 + 1 + 32 + 32 + 16 + 16 + 16 + 16 + 1 + 1 + (56 * 1) + (80 * 9)
                                    // @TODO: break this up by obligation / collateral / liquidity https://git.io/JOCca
 impl Pack for Obligation {
     const LEN: usize = OBLIGATION_LEN;
