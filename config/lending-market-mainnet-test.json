@@ -89,17 +89,6 @@
       "lendingMarketAuthority": "9d3wmQHn61KSWvhCrRodLQtQZvZVMkXYmAoty49aZzcB",
       "lendingMarketOwnerAccount": "HmzDqZExUUQo4hazRsvnEHvhQfzFqziDYuUAJfRas48J"
     },
-    "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E": {
-      "reserveId": "5hjdCsuvNBgcg3YyChxgLnxrjVy4gTyQBsnC63jfvUHm",
-      "liquidityTokenID": "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E",
-      "liquiditySupplyID": "5sxJ6EZ74gfu5HhmP8mqHCfvE5PsocR8642YwpSMi2Eq",
-      "liquidityFeeReceiverID": "FeqD2BkwmYt6ug3MeQ6fHrci8bLvMk94gyFiLQ1ukdDt",
-      "collateralTokenID": "GYPYVvWU7ZJDs7g78fqReVsxffcztCqSvJFzX6LAUxt8",
-      "collateralSupplyID": "3ub46faATPJmyigU6X6nnCsLofPax5WnkNtQKQFLHeoC",
-      "lendingMarketID": "JE9YQQuJomNK9ucbVHYAmbBwyxRxYehz1tmznB89hput",
-      "lendingMarketAuthority": "9d3wmQHn61KSWvhCrRodLQtQZvZVMkXYmAoty49aZzcB",
-      "lendingMarketOwnerAccount": "HmzDqZExUUQo4hazRsvnEHvhQfzFqziDYuUAJfRas48J"
-    },
     "2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk": {
       "reserveId": "A4Giwb5sazW44NWY5e4ijcUAR9wgsnnvUxEzrgaRfmLU",
       "liquidityTokenID": "2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk",
@@ -479,6 +468,18 @@
       "liquidityFeeReceiverID": "5NAhbCFmrXmcd2a9m1ogWSCwsnp8PTLTfwfXMLQX8DWJ",
       "collateralTokenID": "2PJYEg5wpkegxG1KXg6dLbcdwnoNZ7dQh6QMmGfsvc1F",
       "collateralSupplyID": "7zquNDRo7fSjRwZXXZevD5pE8SfNcKVBfLTf913KkEJY",
+      "lendingMarketID": "DwKvvvwpEmSCf8jDdyACrE2fWDhEnqTtjH2MTfXSAfiq",
+      "lendingMarketAuthority": "5c6EHwGqNVzYeMj26HkCjEQKZ4kXNiwdQzuzHBRUbk6r",
+      "lendingMarketOwnerAccount": "HmzDqZExUUQo4hazRsvnEHvhQfzFqziDYuUAJfRas48J"
+    },
+    "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E": {
+      "reserveId": "FVNMEXNWzdLKg5dp4qnxB5urEVPbEk4ztgSkoANWKYgc",
+      "name": "BTC",
+      "liquidityTokenID": "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E",
+      "liquiditySupplyID": "8tbQQSTnGu3j9C8Fo4imTBuzn2vryvPmoWrg62bz7HP9",
+      "liquidityFeeReceiverID": "FeqD2BkwmYt6ug3MeQ6fHrci8bLvMk94gyFiLQ1ukdDt",
+      "collateralTokenID": "MmHgSbMGVJCcyt23GwYxVFoaQAKJF5bpfyw6tn6YiFf",
+      "collateralSupplyID": "BEzrMqYD7wRVgMv7qfaJLRog173xYU2Kb7TVZ6ZZ7yhN",
       "lendingMarketID": "DwKvvvwpEmSCf8jDdyACrE2fWDhEnqTtjH2MTfXSAfiq",
       "lendingMarketAuthority": "5c6EHwGqNVzYeMj26HkCjEQKZ4kXNiwdQzuzHBRUbk6r",
       "lendingMarketOwnerAccount": "HmzDqZExUUQo4hazRsvnEHvhQfzFqziDYuUAJfRas48J"
