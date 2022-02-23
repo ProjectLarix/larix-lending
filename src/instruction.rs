@@ -203,12 +203,11 @@ pub enum LendingInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[writable]` Source collateral token account.
-    ///                     Minted by deposit reserve collateral mint.
-    ///                     $authority can transfer $collateral_amount.
-    ///   1. `[writable]` Destination deposit reserve collateral supply SPL Token account.
+    ///   0. `[writable]` Source withdraw reserve collateral supply SPL Token account.
+    ///   1. `[writable]` Destination collateral token account.
+    ///                     Minted by withdraw reserve collateral mint.
     ///   2. `[]` Withdraw reserve account - refreshed.
-    ///   3. `[writable]` Obligation account.
+    ///   3. `[writable]` Obligation account - refreshed.
     ///   4. `[]` Lending market account.
     ///   5. `[]` Derived lending market authority.
     ///   6. `[signer]` Obligation owner.
@@ -222,11 +221,6 @@ pub enum LendingInstruction {
     // 10
     /// Borrow liquidity from a reserve by depositing collateral tokens. Requires a refreshed
     /// obligation and reserve.
-    /// ::Useless
-    ///     The current account will not be used.
-    ///    It is used to make up the account number,
-    ///    in order to keep the size of the current instruction is equals to liquidate obligation instruction,
-    ///    to avoid the situation that the current transaction is successful but the liquidate cannot be performed
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Source borrow reserve liquidity supply SPL Token account.
@@ -239,8 +233,6 @@ pub enum LendingInstruction {
     ///   6. `[signer]` Obligation owner.
     ///   7. `[]` Token program id.
     ///   8. `[]` Borrow fee receiver
-    ///   9. `[]` Larix oracle program account- Useless
-    ///   10. `[]` Mine mint account - Useless
     BorrowObligationLiquidity {
         /// Amount of liquidity to borrow - u64::MAX for 100% of borrowing power
         liquidity_amount: u64,
@@ -375,17 +367,16 @@ pub enum LendingInstruction {
     WithdrawMining{
         amount:u64
     },
-
     // 20
-     /// 0. `[writable]` Mining account
-     /// 1. `[]` Mine supply
-     /// 2. `[]` Destination account
-     /// 3. `[Signer]` Mining owner
-     /// 4. `[]` Lending market info
-     /// 5. `[]` Lending market authority
-     /// 6. `[]` Token program id
-     /// 7. `[]`
-     ///     ... Reserves
+    /// 0. `[writable]` Mining account
+    /// 1. `[]` Mine supply
+    /// 2. `[]` Destination account
+    /// 3. `[Signer]` Mining owner
+    /// 4. `[]` Lending market info
+    /// 5. `[]` Lending market authority
+    /// 6. `[]` Token program id
+    /// 7. `[]`
+    ///     ... Reserves
     ClaimMiningMine,
 
 
@@ -398,12 +389,13 @@ pub enum LendingInstruction {
     /// 5. `[]` Lending market authority
     /// 6. `[]` Token program id
     ClaimObligationMine,
-
     // 22
     /// 0. `[]` Source account (liquidity supply account)
     /// 1. `[]` Destination account receive owner fee
     /// 2. `[]` Lending market account
     /// 3. `[singer]` Lending market owner
+    /// 4. `[]`  Lending market authority
+    /// 5. `[]` Reserve
     ClaimOwnerFee,
 
     // 23
@@ -414,12 +406,9 @@ pub enum LendingInstruction {
     // 24
     ///
     ///   0. `[writable]` Reserve account.
+    ///
     ///   1. `[]` Oracle account larix oracle or pyth price account .
     ///
-    ///   ...
-    ///
-    ///   `[writable]` Reserve account.
-    ///   `[]` Oracle account larix oracle or pyth price account
     ///
     RefreshReserves,
 
@@ -448,6 +437,7 @@ pub enum LendingInstruction {
         liquidity_amount: u64,
     },
 
+
     // 26
     ///
     ///  0.  `[]` Token program
@@ -471,9 +461,34 @@ pub enum LendingInstruction {
         claim_times:u16,
         // the ratio of claim user's all mine token 10000 equals 100%
         claim_ratio:u16
+    },
+    // 27
+    /// Deposit collateral to an obligation. Requires a refreshed reserve.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Source collateral token account.
+    ///                     Minted by deposit reserve collateral mint.
+    ///                     $authority can transfer $collateral_amount.
+    ///   1. `[writable]` Destination deposit reserve collateral supply SPL Token account.
+    ///   2. `[]` Deposit reserve account - refreshed.
+    ///   3. `[writable]` Obligation account.
+    ///   4. `[]` Lending market account.
+    ///   5. `[signer]` Obligation owner.
+    ///   6. `[signer]` User transfer authority ($authority).
+    ///   7. `[]` Token program id.
+    DepositObligationCollateral2 {
+        /// Amount of collateral tokens to deposit
+        collateral_amount: u64,
+    },
+    // 28
+    /// 0. `[]` Lending market account.
+    /// 1. `[writable]` Reserve account
+    /// 2. `[Signer]` Add available amount authority
+    AddAvailableAmount{
+        add_amount: u64
     }
 }
-
 impl LendingInstruction {
     /// Unpacks a byte buffer into a [LendingInstruction](enum.LendingInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
@@ -599,6 +614,14 @@ impl LendingInstruction {
                     claim_ratio
                 }
             }
+            27 => {
+                let (collateral_amount, _rest) = unpack_u64(rest)?;
+                Self::DepositObligationCollateral2 { collateral_amount }
+            }
+            28 => {
+                let (add_amount, _rest) = unpack_u64(rest)?;
+                Self::AddAvailableAmount { add_amount }
+            }
             _ => {
                 msg!("Instruction cannot be unpacked");
                 return Err(LendingError::InstructionUnpackError.into());
@@ -648,6 +671,10 @@ impl LendingInstruction {
             Self::LiquidateObligation2{liquidity_amount} =>{
                 buf.push(25);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+            }
+            Self::DepositObligationCollateral2 {collateral_amount} => {
+                buf.push(27);
+                buf.extend_from_slice(&collateral_amount.to_le_bytes());
             }
             _ => {
                 // TODO: implementation
@@ -804,6 +831,34 @@ pub fn deposit_obligation_collateral(
             .into_iter()
             .map(|pubkey| AccountMeta::new_readonly(pubkey, false)),
     );
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::DepositObligationCollateral { collateral_amount }.pack(),
+    }
+}
+#[allow(clippy::too_many_arguments)]
+pub fn deposit_obligation_collateral2(
+    program_id: Pubkey,
+    collateral_amount: u64,
+    source_collateral_pubkey: Pubkey,
+    destination_collateral_pubkey: Pubkey,
+    deposit_reserve_pubkey: Pubkey,
+    obligation_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    obligation_owner_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(source_collateral_pubkey, false),
+        AccountMeta::new(destination_collateral_pubkey, false),
+        AccountMeta::new_readonly(deposit_reserve_pubkey, false),
+        AccountMeta::new(obligation_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(obligation_owner_pubkey, true),
+        AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
     Instruction {
         program_id,
         accounts,
