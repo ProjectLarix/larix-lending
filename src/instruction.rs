@@ -207,7 +207,7 @@ pub enum LendingInstruction {
     ///   1. `[writable]` Destination collateral token account.
     ///                     Minted by withdraw reserve collateral mint.
     ///   2. `[]` Withdraw reserve account - refreshed.
-    ///   3. `[writable]` Obligation account - refreshed.
+    ///   3. `[writable]` Obligation account - refreshed when borrows is not empty.
     ///   4. `[]` Lending market account.
     ///   5. `[]` Derived lending market authority.
     ///   6. `[signer]` Obligation owner.
